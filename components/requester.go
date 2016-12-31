@@ -1,5 +1,6 @@
 package components
 
+/**
 import (
 	"context"
 	"fmt"
@@ -76,3 +77,4 @@ type RequestResult struct {
 
 // TODO are these errors or some other special interface?
 type ResponseAssertionResult interface{}
+*/

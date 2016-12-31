@@ -12,13 +12,34 @@ type Rate int
 
 // TODO add stats to this?
 type RequestEngine struct {
-	requestors []RequestHandle
-	factory    RequestFactory
+	requestors []RequestMaker
+	factory    RequestMakerFactory
 }
 
 func (engine *RequestEngine) RunAtRate(rate Rate) error {
-	newNumRequestors := int(rate)
-	return engine.updateRequestors(newNumRequestors)
+	newNumberOfRequestMakers := int(rate)
+	return engine.updateRequestMaker(newNumberOfRequestMakers)
+}
+
+// TODO there's a cleaner way to do this -- figure it out
+func (engine *RequestEngine) updateRequestMaker(newNumRequestMaker int) error {
+	if newNumRequestMaker < 0 {
+		return RateMustNotBeNegative{}
+	}
+
+	numCurrentRequestMaker := len(engine.requestors)
+	var newRequestMakers []RequestMaker
+	if newNumRequestMaker > numCurrentRequestMaker {
+		numberToAdd := newNumRequestMaker - numCurrentRequestMaker
+		newRequestMakers = addRequestMakers(numberToAdd, engine.requestors, engine.factory)
+	} else {
+		numberToRemove := getNumberToRemove(numCurrentRequestMaker, newNumRequestMaker)
+		newRequestMakers = removeRequestMakers(numberToRemove, engine.requestors)
+	}
+
+	engine.requestors = newRequestMakers
+
+	return nil
 }
 
 type RateMustNotBeNegative struct{}
@@ -27,52 +48,32 @@ func (e RateMustNotBeNegative) Error() string {
 	return "Rate must not be negative"
 }
 
-// TODO there's a cleaner way to do this -- figure it out
-func (engine *RequestEngine) updateRequestors(newNumRequestors int) error {
-	if newNumRequestors < 0 {
-		return RateMustNotBeNegative{}
-	}
+func addRequestMakers(howManyToAdd int, requestors []RequestMaker, factory RequestMakerFactory) []RequestMaker {
+	lenRequestMaker := len(requestors)
+	totalNewRequestMaker := lenRequestMaker + howManyToAdd
 
-	numCurrentRequestors := len(engine.requestors)
-	var newRequestors []RequestHandle
-	if newNumRequestors > numCurrentRequestors {
-		numberToAdd := newNumRequestors - numCurrentRequestors
-		newRequestors = addRequestors(numberToAdd, engine.requestors, engine.factory)
-	} else {
-		numberToRemove := getNumberToRemove(newNumRequestors, numCurrentRequestors)
-		newRequestors = removeRequestors(numberToRemove, engine.requestors)
-	}
-	engine.requestors = newRequestors
+	newRequestMaker := make([]RequestMaker, totalNewRequestMaker)
+	copy(newRequestMaker, requestors)
 
-	return nil
+	for i := lenRequestMaker; i < totalNewRequestMaker; i++ {
+		newRequestMaker[i], _ = factory.NewRequestMaker() // TODO use this
+	}
+	return newRequestMaker
 }
 
-func addRequestors(howManyToAdd int, requestors []RequestHandle, factory RequestFactory) []RequestHandle {
-	lenRequestors := len(requestors)
-	totalNewRequestors := lenRequestors + howManyToAdd
-
-	newRequestors := make([]RequestHandle, lenRequestors, totalNewRequestors)
-	copy(newRequestors, requestors)
-
-	for i := lenRequestors; i < totalNewRequestors; i++ {
-		newRequestors[i] = factory.NewRequest()
-	}
-	return newRequestors
-}
-
-func getNumberToRemove(numCurrentRequestors int, newNumRequestors int) int {
-	numberToRemove := numCurrentRequestors - newNumRequestors
+func getNumberToRemove(currentRequestMakers int, newRequestMakers int) int {
+	numberToRemove := currentRequestMakers - newRequestMakers
 	if numberToRemove < 0 {
-		numberToRemove = numCurrentRequestors
+		numberToRemove = currentRequestMakers
 	}
 	return numberToRemove
 }
 
-func removeRequestors(numberRemove int, requestors []RequestHandle) []RequestHandle {
-	lenRequestors := len(requestors)
-	toBeRemovedAndStopped := requestors[lenRequestors-numberRemove : lenRequestors]
-	for _, stoppable := range toBeRemovedAndStopped {
-		stoppable.Stop()
+func removeRequestMakers(numberToRemove int, requestors []RequestMaker) []RequestMaker {
+	lenRequestMaker := len(requestors)
+	requestMakersToStop := requestors[lenRequestMaker-numberToRemove : lenRequestMaker]
+	for _, requestMaker := range requestMakersToStop {
+		requestMaker.Stop()
 	}
-	return requestors[:lenRequestors-numberRemove]
+	return requestors[:lenRequestMaker-numberToRemove]
 }
