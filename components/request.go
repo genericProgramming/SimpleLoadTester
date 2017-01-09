@@ -2,7 +2,6 @@ package components
 
 import (
 	"context"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"time"
@@ -56,10 +55,7 @@ func (h *HttpRequest) RunRequest(ctx context.Context) {
 	// simulate work
 	start := time.Now()
 	response, e := h.config.MakeHttpCall()
-	defer response.Body.Close()
 	elapsed := time.Since(start)
-
-	body, e := ioutil.ReadAll(response.Body)
 
 	result := RequestResult{
 		timeTaken: elapsed,
@@ -72,5 +68,5 @@ func (h *HttpRequest) RunRequest(ctx context.Context) {
 		result.responseStatus = response.StatusCode
 	}
 	h.outputChannel <- result
-	log.Println("Request complete with body", string(body))
+	log.Println("Request complete with body")
 }
