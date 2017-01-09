@@ -23,7 +23,7 @@ type OnePerSecondRequestMakerFactory struct {
 }
 
 func (factory *OnePerSecondRequestMakerFactory) NewRequestMaker() (RequestMaker, error) {
-	if factory.request == nil {
+	if factory == nil || factory.request == nil {
 		log.Panicln("Need to have a valid request struct")
 	}
 	return NewOnePerSecondRequestMaker(factory.request), nil
@@ -45,20 +45,23 @@ type OnePerSecondRequestMaker struct {
 }
 
 func (requestMaker *OnePerSecondRequestMaker) Start() error {
-	for {
-		select {
-		case <-requestMaker.requestContext.Done():
-			log.Println("Stopping request handle") // TODO add key?
-			return nil
-		default: // don't block on the done
+	go func() {
+		for {
+			select {
+			case <-requestMaker.requestContext.Done():
+				log.Println("Stopping request handle") // TODO add key?
+				return
+			default: // don't block on the done
+			}
+			ctx, _ := context.WithCancel(requestMaker.requestContext)
+			go requestMaker.request.RunRequest(ctx) // TODO add context to this to stop multiple uber long requests?
+			requestMaker.limitToOneRequestPerInterval()
 		}
-		ctx, _ := context.WithCancel(requestMaker.requestContext)
-		go requestMaker.request.RunRequest(ctx) // TODO add context to this to stop multiple uber long requests?
-		limitToOneRequestPerInterval()
-	}
+	}()
+	return nil
 }
 
-func limitToOneRequestPerInterval() {
+func (requestMaker *OnePerSecondRequestMaker) limitToOneRequestPerInterval() {
 	time.Sleep(rEQUEST_INTERVAL)
 }
 

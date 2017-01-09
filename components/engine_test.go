@@ -16,6 +16,7 @@ func TestGetNumberToRemove(t *testing.T) {
 		expectedResult       int
 	}{
 		{0, 0, 0},
+		{0, 1, 0},
 		{1, 1, 0},
 		{1, 0, 1},
 		{10, 5, 5},

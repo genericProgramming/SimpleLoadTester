@@ -7,46 +7,48 @@ import (
 
 	"github.com/smartystreets/assertions/should"
 	. "github.com/smartystreets/goconvey/convey"
-
-	. "github.com/stretchr/testify/mock"
 )
 
-type MockRequest struct {
+type mockRequest struct {
 	_Run           func(ctx context.Context)
 	timesRunCalled int
 }
 
-func (request *MockRequest) RunRequest(ctx context.Context) {
+func (request *mockRequest) RunRequest(ctx context.Context) {
 	request.timesRunCalled++
 	request._Run(ctx)
 }
 
 func TestLongRequests(t *testing.T) {
 	Convey("We should not block when making requests", t, func() {
-		stopSignal := make(chan struct{})
-		var requestCounter int
+		countSignal := make(chan struct{})
 		LONG_INTERVAL := time.Second * 2
 
 		request := &mockRequest{
-			_Run: func() {
+			_Run: func(ctx context.Context) {
 				time.Sleep(LONG_INTERVAL)
-				requestCounter++ // sketchy ik
-				if requestCounter > 3 {
-					close(stopSignal)
-				}
+				countSignal <- struct{}{}
 			},
 		}
 
-		stopper := NewRequester(request)
-		select {
-		case <-stopSignal:
-			stopper.Stop()
-		}
+		stopper := NewOnePerSecondRequestMaker(request)
+		stopper.Start()
 
-		So(requestCounter, should.BeGreaterThanOrEqualTo, 3) // TODO observe context cancel?
-		So(request.timesRunCalled, should.BeGreaterThan, requestCounter)
-		handle, ok := stopper.(*SimpleRequestHandle)
-		So(ok, should.BeTrue)
-		So(handle.ctx.Err(), should.NotBeNil) // indicates context is done
+		stopCounter := 0
+		for {
+			<-countSignal
+			stopCounter++
+			if stopCounter > 3 {
+				break
+			}
+		}
+		stopper.Stop()
+
+		So(request.timesRunCalled, should.BeGreaterThan, stopCounter)
+		So(stopper.requestContext.Err(), should.NotBeNil) // indicates context is done
 	})
+}
+
+func TestStart(t *testing.T) {
+
 }
