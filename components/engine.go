@@ -10,6 +10,12 @@ type Throttle interface {
 
 type Rate int
 
+func NewRequestEngine(factory RequestMakerFactory) RequestEngine {
+	return RequestEngine{
+		factory: factory,
+	}
+}
+
 // TODO add stats to this?
 type RequestEngine struct {
 	requestors []RequestMaker
@@ -56,7 +62,9 @@ func addRequestMakers(howManyToAdd int, requestors []RequestMaker, factory Reque
 	copy(newRequestMaker, requestors)
 
 	for i := lenRequestMaker; i < totalNewRequestMaker; i++ {
-		newRequestMaker[i], _ = factory.NewRequestMaker() // TODO use this
+		maker, _ := factory.NewRequestMaker()
+		maker.Start()
+		newRequestMaker[i] = maker
 	}
 	return newRequestMaker
 }

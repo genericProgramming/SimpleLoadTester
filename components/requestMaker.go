@@ -3,11 +3,17 @@ package components
 import (
 	"context"
 	"log"
+	"math/rand"
 	"time"
 )
 
 const oNE_SECOND = 1 * time.Second
+const oNE_SECOND_MILLIS = int32(1 * time.Millisecond)
 const rEQUEST_INTERVAL = oNE_SECOND // TODO externalize this?
+
+func init() {
+	rand.Seed(time.Now().Unix())
+}
 
 type RequestMaker interface {
 	Start() error
@@ -46,6 +52,7 @@ type OnePerSecondRequestMaker struct {
 
 func (requestMaker *OnePerSecondRequestMaker) Start() error {
 	go func() {
+		keepRequestsFromColliding()
 		for {
 			select {
 			case <-requestMaker.requestContext.Done():
@@ -55,13 +62,18 @@ func (requestMaker *OnePerSecondRequestMaker) Start() error {
 			}
 			ctx, _ := context.WithCancel(requestMaker.requestContext)
 			go requestMaker.request.RunRequest(ctx) // TODO add context to this to stop multiple uber long requests?
-			requestMaker.limitToOneRequestPerInterval()
+			limitToOneRequestPerInterval()
 		}
 	}()
 	return nil
 }
 
-func (requestMaker *OnePerSecondRequestMaker) limitToOneRequestPerInterval() {
+func keepRequestsFromColliding() {
+	sleepTime := time.Duration(rand.Int31n(1000)) * time.Millisecond
+	time.Sleep(sleepTime)
+}
+
+func limitToOneRequestPerInterval() {
 	time.Sleep(rEQUEST_INTERVAL)
 }
 

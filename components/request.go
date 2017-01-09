@@ -2,7 +2,8 @@ package components
 
 import (
 	"context"
-	"fmt"
+	"io/ioutil"
+	"log"
 	"net/http"
 	"time"
 )
@@ -23,7 +24,7 @@ type ResponseAssertionResult interface {
 }
 
 type RequestConfig interface {
-	MakeHttpCall() (http.Response, error)
+	MakeHttpCall() (*http.Response, error)
 }
 
 func NewHttpRequest(config RequestConfig, outputChannel chan<- RequestResult) HttpRequest {
@@ -31,6 +32,18 @@ func NewHttpRequest(config RequestConfig, outputChannel chan<- RequestResult) Ht
 		outputChannel: outputChannel,
 		config:        config,
 	}
+}
+
+func NewHttpRequestFunctional(httpCall func() (*http.Response, error), outputChannel chan<- RequestResult) HttpRequest {
+	return NewHttpRequest(&dummyConfig{httpCall: httpCall}, outputChannel)
+}
+
+type dummyConfig struct {
+	httpCall func() (*http.Response, error)
+}
+
+func (d *dummyConfig) MakeHttpCall() (*http.Response, error) {
+	return d.httpCall()
 }
 
 type HttpRequest struct {
@@ -43,7 +56,10 @@ func (h *HttpRequest) RunRequest(ctx context.Context) {
 	// simulate work
 	start := time.Now()
 	response, e := h.config.MakeHttpCall()
+	defer response.Body.Close()
 	elapsed := time.Since(start)
+
+	body, e := ioutil.ReadAll(response.Body)
 
 	result := RequestResult{
 		timeTaken: elapsed,
@@ -55,7 +71,6 @@ func (h *HttpRequest) RunRequest(ctx context.Context) {
 	} else {
 		result.responseStatus = response.StatusCode
 	}
-	fmt.Printf("Sending result %v to channel %v\n", result, h.outputChannel)
 	h.outputChannel <- result
-	fmt.Println("Shit sent")
+	log.Println("Request complete with body", string(body))
 }

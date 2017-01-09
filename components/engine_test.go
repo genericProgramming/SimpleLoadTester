@@ -5,6 +5,8 @@ import (
 
 	"fmt"
 
+	"sync/atomic"
+
 	"github.com/smartystreets/assertions/should"
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -139,8 +141,9 @@ func TestAddRequestors(t *testing.T) {
 		Convey(fmt.Sprintf("Should increase the requestors by the Rate(%v) with oldNumberRequestors(%v)",
 			testCase.addNumber, testCase.requestorNumber), t, func() {
 			newRequestCalls := 0
+			var startCalled int64 = 0
 			mockMaker := MockRequestMaker{
-				func() error { return nil },
+				func() error { atomic.AddInt64(&startCalled, 1); return nil },
 				func() <-chan error { So(false, should.BeTrue); return nil },
 			}
 			mockFactory := MockFactory{
@@ -156,6 +159,7 @@ func TestAddRequestors(t *testing.T) {
 			actualRequestors := addRequestMakers(testCase.addNumber, requestors, mockFactory)
 			So(len(actualRequestors), should.Equal, testCase.totalNumber)
 			So(newRequestCalls, should.Equal, testCase.addNumber)
+			So(startCalled, should.Equal, int64(testCase.addNumber))
 		})
 	}
 
