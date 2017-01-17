@@ -1,22 +1,21 @@
 package components
 
 import (
-	"fmt"
 	"net/http"
 	"testing"
 
 	"time"
 
+	. "github.com/smartystreets/goconvey/convey"
 	httpmock "gopkg.in/jarcoal/httpmock.v1"
 )
 
 const url = "http://localhost:8080/hello/world"
 
 func TestSimpleEngine(t *testing.T) {
-	// setup mockys
+	// setup mock
 	httpmock.Activate()
 	defer httpmock.DeactivateAndReset()
-
 	httpmock.RegisterResponder("GET", url,
 		httpmock.NewStringResponder(200, "OK"))
 
@@ -26,15 +25,18 @@ func TestSimpleEngine(t *testing.T) {
 	}, output)
 	factory := OnePerSecondRequestMakerFactory{request: &request}
 	engine := NewRequestEngine(&factory)
+
+	expectedNumber := 5
 	engine.RunAtRate(Rate(1))
-	<-time.After(5 * time.Second)
+	<-time.After(time.Duration(expectedNumber) * time.Second)
 	engine.RunAtRate(0)
-	<-time.After(5 * time.Second)
+	<-time.After(time.Duration(expectedNumber) * time.Second)
 	close(output)
-	// read off 10 response
-	count := 0
+	// read off 5 responses to ensure we saw the correct number
 	for range output {
-		count++
+		expectedNumber--
 	}
-	fmt.Println(count)
+	Convey("We should see 5 requests returned", t, func() {
+		So(expectedNumber, ShouldBeGreaterThanOrEqualTo, 0)
+	})
 }
