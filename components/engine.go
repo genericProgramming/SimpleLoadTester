@@ -10,8 +10,8 @@ type Throttle interface {
 
 type Rate int
 
-func NewRequestEngine(factory RequestMakerFactory) RequestEngine {
-	return RequestEngine{
+func NewRequestEngine(factory RequestMakerFactory) *RequestEngine {
+	return &RequestEngine{
 		factory: factory,
 	}
 }

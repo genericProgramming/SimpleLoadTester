@@ -35,10 +35,10 @@ func TestRunRequest(t *testing.T) {
 		req.RunRequest(ctx)
 		response := <-output
 		Convey("Request should leverage requestConfig", t, func() {
-			So(response.assertions, ShouldBeNil)
-			So(response.err, ShouldEqual, tCase.testError)
-			So(response.responseStatus, ShouldEqual, tCase.expectedCode)
-			So(response.timeTaken, ShouldBeGreaterThanOrEqualTo, 1*time.Millisecond)
+			So(response.Assertions, ShouldBeNil)
+			So(response.Error, ShouldEqual, tCase.testError)
+			So(response.ResponseStatus, ShouldEqual, tCase.expectedCode)
+			So(response.EndTime.Sub(response.StartTime), ShouldBeGreaterThanOrEqualTo, 1*time.Millisecond)
 		})
 	}
 }

@@ -12,12 +12,14 @@ type Request interface {
 }
 
 type RequestResult struct {
-	timeTaken      time.Duration
-	responseStatus int
-	err            error
-	assertions     []ResponseAssertionResult //TODO
+	StartTime      time.Time
+	EndTime        time.Time
+	ResponseStatus int
+	Error          error
+	Assertions     []ResponseAssertionResult //TODO
 }
 
+/// Some assertion that
 type ResponseAssertionResult interface {
 	IsSatisfied() bool
 }
@@ -55,17 +57,18 @@ func (h *HttpRequest) RunRequest(ctx context.Context) {
 	// simulate work
 	start := time.Now()
 	response, e := h.config.MakeHttpCall()
-	elapsed := time.Since(start)
+	elapsed := time.Now()
 
 	result := RequestResult{
-		timeTaken: elapsed,
+		StartTime: start,
+		EndTime:   elapsed,
 	}
 
 	if e != nil {
-		result.responseStatus = -1
-		result.err = e
+		result.ResponseStatus = -1
+		result.Error = e
 	} else {
-		result.responseStatus = response.StatusCode
+		result.ResponseStatus = response.StatusCode
 	}
 	h.outputChannel <- result
 	log.Println("Request complete with body")
