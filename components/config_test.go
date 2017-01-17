@@ -36,7 +36,6 @@ func TestConfigFile(t *testing.T) {
 
 	Convey("The Config should be successfully loaded", t, func() {
 		config, err := LoadConfig(fileName)
-		fmt.Println("---", config)
 		So(err, ShouldBeNil)
 		So(config.Window, ShouldEqual, 1*time.Second)
 		So(config.NumberOfBadRequestsPerTimeWindow, ShouldEqual, 100)
