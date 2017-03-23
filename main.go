@@ -12,5 +12,5 @@ func main() {
 		errors.Wrap(err, "Cant load config file and thus can't start up")
 	}
 	monitor := NewMonitor(config)
-	monitor.Start()
+	monitor.IsApiHealthy()
 }

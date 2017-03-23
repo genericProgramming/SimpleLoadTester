@@ -1,6 +1,7 @@
 package components
 
 import metrics "github.com/rcrowley/go-metrics"
+import "time"
 
 const (
 	sampleSize      int     = 1028
@@ -32,7 +33,6 @@ type GoMetricBasedAggregator struct {
 // aggregating accordingly
 func (aggregator *GoMetricBasedAggregator) ListenAndAggregate(results <-chan RequestResult) {
 	aggregator.setupMetrics()
-
 	go aggregator.aggregateResults(results)
 }
 
@@ -57,5 +57,9 @@ func getErrorCodeGauge(config *Config) metrics.Gauge {
 }
 
 func (aggregator *GoMetricBasedAggregator) aggregateResults(results <-chan RequestResult) {
-
+	for result := range results {
+		timeTaken := result.EndTime.Sub(result.StartTime) * time.Millisecond
+		aggregator.responseTimeHistogram.Update(int64(timeTaken))
+		aggregator.errorCodesGauge.Update(result.)
+	}
 }

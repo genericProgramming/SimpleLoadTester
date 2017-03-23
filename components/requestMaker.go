@@ -24,6 +24,7 @@ type RequestMakerFactory interface {
 	NewRequestMaker() (RequestMaker, error)
 }
 
+// TODO create a NewOnePerSecondRequestMaker method for this
 type OnePerSecondRequestMakerFactory struct {
 	request Request
 }
@@ -52,23 +53,24 @@ type OnePerSecondRequestMaker struct {
 
 func (requestMaker *OnePerSecondRequestMaker) Start() error {
 	go func() {
-		keepRequestsFromColliding()
+		randomlySpaceRequestMakers()
 		for {
 			select {
 			case <-requestMaker.requestContext.Done():
 				log.Println("Stopping request handle") // TODO add key?
 				return
-			default: // don't block on the done
+			default:
 			}
-			ctx, _ := context.WithCancel(requestMaker.requestContext)
-			go requestMaker.request.RunRequest(ctx) // TODO add context to this to stop multiple uber long requests?
+			ctx := context.WithValue(requestMaker.requestContext, struct{}{}, struct{}{})
+			go requestMaker.request.RunRequest(ctx) // TODO who decides if this is run in a separate go routine?
 			limitToOneRequestPerInterval()
 		}
 	}()
 	return nil
 }
 
-func keepRequestsFromColliding() {
+// TODO this probably belongs in the engine somewhere
+func randomlySpaceRequestMakers() {
 	sleepTime := time.Duration(rand.Int31n(1000)) * time.Millisecond
 	time.Sleep(sleepTime)
 }
@@ -77,6 +79,7 @@ func limitToOneRequestPerInterval() {
 	time.Sleep(rEQUEST_INTERVAL)
 }
 
+// Stop prevents new requests from being created and signals the inflight requests that the should stop
 func (requestMaker *OnePerSecondRequestMaker) Stop() <-chan error {
 	requestMaker.cancel()
 	errChannel := make(chan error)

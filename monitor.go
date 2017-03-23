@@ -2,11 +2,10 @@ package main
 
 import "github.com/genericProgramming/simpleLoadTester/components"
 import "log"
+import "time"
 
 type Monitor interface {
 	IsApiHealthy()
-	RampUp()
-	RampDown()
 }
 
 type StairCaseMonitor struct {
@@ -16,20 +15,20 @@ type StairCaseMonitor struct {
 	currentRate components.Rate
 }
 
-func RunMonitor(monitor Monitor) {
-	go func(){
+func RunMonitor(monitor *StairCaseMonitor) {
+	go func() {
 		for {
-			performWork()
-			sleep()
+			// getCurrentStats()
+			// compareStatsToSpecification()
+			// adjustEngine()
+			time.Sleep(monitor.config.Window)
 		}
 	}()
 }
 
-func isApiHealthy(aggregator components.ResponseAggregator) Data{
+func (monitor *StairCaseMonitor) IsApiHealthy() {
 	log.Panic("NYI")
 }
-
-func 
 
 func NewMonitor(config *components.Config) Monitor {
 	return &StairCaseMonitor{
