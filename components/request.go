@@ -5,8 +5,6 @@ import (
 	"log"
 	"net/http"
 	"time"
-
-	"github.com/rcrowley/go-metrics"
 )
 
 const HttpRequestCounter = "http.metrics.counter"
@@ -33,41 +31,34 @@ type RequestConfig interface {
 	MakeHttpCall() (*http.Response, error)
 }
 
-type dummyConfig struct {
+type AnnonymousFunctionConfig struct {
 	httpCall func() (*http.Response, error)
 }
 
-func (d *dummyConfig) MakeHttpCall() (*http.Response, error) {
+func (d *AnnonymousFunctionConfig) MakeHttpCall() (*http.Response, error) {
 	return d.httpCall()
 }
 
-func NewMetricHttpRequest(config RequestConfig, outputChannel chan<- RequestResult) MetricHttpRequest {
-	return MetricHttpRequest{
-		requestCounter: metrics.GetOrRegisterCounter(HttpRequestCounter, nil),
-		requestTimer:   metrics.GetOrRegisterTimer(HttpRequestTimer, nil),
-		outputChannel:  outputChannel,
-		config:         config,
+func NewHttpRequest(config RequestConfig, outputChannel chan<- RequestResult) HttpRequest {
+	return HttpRequest{
+		outputChannel: outputChannel,
+		config:        config,
 	}
 }
 
-func NewMetricHttpRequestFunctional(httpCall func() (*http.Response, error), outputChannel chan<- RequestResult) MetricHttpRequest {
-	return NewMetricHttpRequest(&dummyConfig{httpCall: httpCall}, outputChannel)
+func NewAnnonymousFunctionHttpRequest(httpCall func() (*http.Response, error), outputChannel chan<- RequestResult) HttpRequest {
+	return NewHttpRequest(&AnnonymousFunctionConfig{httpCall: httpCall}, outputChannel)
 }
 
-type MetricHttpRequest struct {
-	requestCounter metrics.Counter
-	requestTimer   metrics.Timer
-	outputChannel  chan<- RequestResult
-	config         RequestConfig
+type HttpRequest struct {
+	outputChannel chan<- RequestResult
+	config        RequestConfig
 }
 
-func (h *MetricHttpRequest) RunRequest(ctx context.Context) {
-	h.requestCounter.Inc(1) // TODO determine if this will cause locking issues (perftest this)
+func (h *HttpRequest) RunRequest(ctx context.Context) {
 	start := time.Now()
 	response, e := h.config.MakeHttpCall()
 	elapsed := time.Now()
-
-	h.requestTimer.Update(elapsed.Sub(start)) // TODO perftest
 
 	result := RequestResult{
 		StartTime: start,

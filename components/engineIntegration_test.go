@@ -20,7 +20,7 @@ func TestSimpleEngine(t *testing.T) {
 		httpmock.NewStringResponder(200, "OK"))
 
 	output := make(chan RequestResult, 100) //prevent requests from blocking on send
-	request := NewHttpRequestFunctional(func() (r *http.Response, e error) {
+	request := NewAnnonymousFunctionHttpRequest(func() (r *http.Response, e error) {
 		return http.Get(url)
 	}, output)
 	factory := OnePerSecondRequestMakerFactory{request: &request}

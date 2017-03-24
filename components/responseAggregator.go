@@ -4,10 +4,11 @@ import metrics "github.com/rcrowley/go-metrics"
 import "time"
 
 const (
-	sampleSize      int     = 1028
-	sampleAlpha     float64 = 0.015
-	responseTimeKey string  = "ResponseTimeMetric"
-	errorCodeKey    string  = "ErrorCodesGauge"
+	sampleSize           int     = 1028
+	sampleAlpha          float64 = 0.015
+	responseTimeKey      string  = "ResponseTimeMetric"
+	errorCodeKey         string  = "ErrorCounter"
+	completedRequestsKey string  = "CompletedRequestsCounter"
 )
 
 /**
@@ -26,21 +27,16 @@ type ResponseAggregator interface {
 type GoMetricBasedAggregator struct {
 	config                *Config
 	responseTimeHistogram metrics.Histogram
-	errorCodesGauge       metrics.Gauge
+	errorCodesCounter     metrics.Counter
+	completedRequests     metrics.Counter
 }
 
-// ListenAndAggregate sets up metrics and listens on the channel for completed requests
-// aggregating accordingly
-func (aggregator *GoMetricBasedAggregator) ListenAndAggregate(results <-chan RequestResult) {
-	aggregator.setupMetrics()
-	go aggregator.aggregateResults(results)
-}
-
-func (aggregator *GoMetricBasedAggregator) setupMetrics() {
-	config := aggregator.config
+func NewGoMetricBasedAggregator(config *Config) ResponseAggregator {
+	aggregator := GoMetricBasedAggregator{config: config}
 	aggregator.responseTimeHistogram = getResponseTimMetricsHistogram(config)
-	aggregator.errorCodesGauge = getErrorCodeGauge(config)
-	// TODO figure out what life will look like for other metrics
+	aggregator.errorCodesCounter = getAndRegisterCounter(errorCodeKey)
+	aggregator.completedRequests = getAndRegisterCounter(completedRequestsKey)
+	return &aggregator
 }
 
 func getResponseTimMetricsHistogram(config *Config) metrics.Histogram {
@@ -50,16 +46,32 @@ func getResponseTimMetricsHistogram(config *Config) metrics.Histogram {
 	return h
 }
 
-func getErrorCodeGauge(config *Config) metrics.Gauge {
-	g := metrics.NewGauge()
-	metrics.Register(errorCodeKey, g)
+func getAndRegisterCounter(key string) metrics.Counter {
+	g := metrics.NewCounter()
+	metrics.Register(key, g)
 	return g
+}
+
+// ListenAndAggregate sets up metrics and listens on the channel for completed requests
+// aggregating accordingly
+// TODO create a stop method on this?
+func (aggregator *GoMetricBasedAggregator) ListenAndAggregate(results <-chan RequestResult) {
+	go aggregator.aggregateResults(results)
 }
 
 func (aggregator *GoMetricBasedAggregator) aggregateResults(results <-chan RequestResult) {
 	for result := range results {
 		timeTaken := result.EndTime.Sub(result.StartTime) * time.Millisecond
 		aggregator.responseTimeHistogram.Update(int64(timeTaken))
-		aggregator.errorCodesGauge.Update(result.)
+
+		if !requestWasSuccessful(&result) {
+			aggregator.errorCodesCounter.Inc(1)
+		}
+		aggregator.completedRequests.Inc(1)
 	}
+}
+
+func requestWasSuccessful(request *RequestResult) bool {
+	return request.Error != nil &&
+		request.ResponseStatus < 500
 }
