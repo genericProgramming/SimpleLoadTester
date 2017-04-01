@@ -1,7 +1,6 @@
 package components
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -11,14 +10,18 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
-const data = `
-window: 1s
+const data = `window: 1s
 numerOfBadRequestsPerTimeWindow: 100
 threshold:
     level: 99
-    responseTimeMs: 1ms`
+    responseTimeMs: 1ms
+requestconfiguration:
+    url: "http://somesite:8080/aNeatPath"
+    method: POST
+    body: '{"key":"value"}'
+`
 
-func getAndMakeTempFile(t *testing.T) string {
+func getAndMakeTempFile(t *testing.T, data string) string {
 	file, err := ioutil.TempFile(".", "testFile")
 	if err != nil {
 		t.Fatal(err)
@@ -28,11 +31,18 @@ func getAndMakeTempFile(t *testing.T) string {
 	return file.Name()
 }
 
-func TestConfigFile(t *testing.T) {
-	fileName := getAndMakeTempFile(t)
+func TestLoadBadConfigFile(t *testing.T) {
+	fileName := getAndMakeTempFile(t, "not yaml")
 	defer os.RemoveAll(fileName) // todo make this cleaner
+	Convey("We should get an error when we can't load the yaml file", t, func() {
+		_, err := LoadConfig(fileName)
+		So(err, ShouldNotBeNil)
+	})
+}
 
-	fmt.Println(time.ParseDuration(" 1s"))
+func TestConfigFile(t *testing.T) {
+	fileName := getAndMakeTempFile(t, data)
+	defer os.RemoveAll(fileName) // todo make this cleaner
 
 	Convey("The Config should be successfully loaded", t, func() {
 		config, err := LoadConfig(fileName)
@@ -42,5 +52,8 @@ func TestConfigFile(t *testing.T) {
 		So(config.Threshold, ShouldNotBeNil)
 		So(config.Threshold.Level, ShouldEqual, float64(99))
 		So(config.Threshold.ResponseTimeMs, ShouldEqual, 1*time.Millisecond)
+		So(config.RequestConfiguration.URL, ShouldEqual, "http://somesite:8080/aNeatPath")
+		So(config.RequestConfiguration.Method, ShouldEqual, "POST")
+		So(config.RequestConfiguration.Body, ShouldEqual, `{"key":"value"}`)
 	})
 }

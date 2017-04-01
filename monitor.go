@@ -90,7 +90,7 @@ func createEngine(config *Config, resultChannel chan RequestResult) Engine {
 
 func createNewRequest(config *Config, resultChannel chan RequestResult) Request {
 	return NewAnnonymousFunctionHttpRequest(func() (*http.Response, error) {
-		return http.Get(config.URL)
+		return http.Get(config.RequestConfiguration.URL)
 	}, resultChannel)
 }
 

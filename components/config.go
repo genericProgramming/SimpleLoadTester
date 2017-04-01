@@ -14,12 +14,18 @@ type Config struct {
 	Window                           time.Duration
 	NumberOfBadRequestsPerTimeWindow int64 `yaml:"numerOfBadRequestsPerTimeWindow"`
 	Threshold                        ResponseThreshold
-	URL                              string
+	RequestConfiguration             RequestConfiguration
 }
 
 type ResponseThreshold struct {
 	Level          float64       // TODO is this an enum?
 	ResponseTimeMs time.Duration `yaml:"responseTimeMs"`
+}
+
+type RequestConfiguration struct {
+	URL    string
+	Method string
+	Body   string
 }
 
 func LoadConfig(fileName string) (*Config, error) {
@@ -28,6 +34,6 @@ func LoadConfig(fileName string) (*Config, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to read input configuration file")
 	}
-	yaml.Unmarshal(configData, &config)
-	return config, nil
+	err = yaml.Unmarshal(configData, &config)
+	return config, err
 }
