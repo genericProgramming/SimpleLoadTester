@@ -6,48 +6,61 @@ import (
 
 	"fmt"
 
-	"github.com/genericProgramming/simpleLoadTester/components"
-	metrics "github.com/rcrowley/go-metrics"
+	. "github.com/genericProgramming/simpleLoadTester/components"
 )
 
 const (
-	maxRate     = components.Rate(100)
-	minRate     = components.Rate(1)
-	defaultRate = components.Rate(20)
+	maxRate     = Rate(100)
+	minRate     = Rate(1)
+	defaultRate = Rate(20)
 )
 
 type StairCaseMonitor struct {
-	config      *components.Config
-	engine      components.Engine
-	aggregator  components.ResponseAggregator
-	currentRate components.Rate
+	config      *Config
+	engine      Engine
+	aggregator  ResponseAggregator
+	currentRate Rate
+	isRunning   bool
 }
 
-func RunMonitor(monitor *StairCaseMonitor) {
-	aggregator := monitor.aggregator.(*components.GoMetricBasedAggregator)
+func (monitor *StairCaseMonitor) Stop() {
+	monitor.isRunning = false
+}
+
+func (monitor *StairCaseMonitor) RunMonitor() {
+	monitor.isRunning = true
+	aggregator := monitor.aggregator.(*GoMetricBasedAggregator)
 	engine := monitor.engine
 	config := monitor.config
 	go func() {
 		currentRate := monitor.currentRate
-		for {
+		for monitor.isRunning {
 			engine.RunAtRate(currentRate)
 			time.Sleep(config.Window)
-			histogram := aggregator.ResponseTimeHistogram.Snapshot()
-			currentRate = getNewRate(currentRate, histogram, config.Threshold)
+			currentRate = getNewRate(currentRate, aggregator, config)
 			fmt.Println("I've made:", aggregator.CompletedRequests.Count(), "requests and am at ", currentRate)
 		}
 	}()
 }
 
-func getNewRate(currentRate components.Rate, histogram metrics.Histogram, threshold components.ResponseThreshold) components.Rate {
+func getNewRate(currentRate Rate, aggregator *GoMetricBasedAggregator, config *Config) Rate {
+	histogram := aggregator.ResponseTimeHistogram.Snapshot() // TODO the aggregator is way to leaky
+	threshold := config.Threshold
+
 	fmt.Println("Current rate is ", currentRate, "with ave response time", histogram.Percentile(.9), "current threshold", threshold.ResponseTimeMs.Nanoseconds()/1e6)
-	if histogram.Percentile(threshold.Level) < float64(threshold.ResponseTimeMs.Nanoseconds()/1e6) {
-		newRate := int64(currentRate) * 2
-		return components.Rate(min(newRate, int64(maxRate)))
-	} else {
-		newRate := int64(currentRate) / 2
-		return components.Rate(max(newRate, int64(minRate)))
+
+	isUnderThreshold := histogram.Percentile(threshold.Level) < float64(threshold.ResponseTimeMs.Nanoseconds()/1e6)
+	tooManyBadRequests := aggregator.ErrorCodesCounter.Count() > config.NumberOfBadRequestsPerTimeWindow
+
+	if !isUnderThreshold || tooManyBadRequests {
+		return halfRate(currentRate)
 	}
+	return doubleRate(currentRate)
+}
+
+func doubleRate(currentRate Rate) Rate {
+	newRate := int64(currentRate) * 2
+	return Rate(min(newRate, int64(maxRate)))
 }
 
 func min(x, y int64) int64 {
@@ -57,6 +70,11 @@ func min(x, y int64) int64 {
 	return y
 }
 
+func halfRate(currentRate Rate) Rate {
+	newRate := int64(currentRate) / 2
+	return Rate(max(newRate, int64(minRate)))
+}
+
 func max(x, y int64) int64 {
 	if x > y {
 		return x
@@ -64,26 +82,26 @@ func max(x, y int64) int64 {
 	return y
 }
 
-func createEngine(config *components.Config, resultChannel chan components.RequestResult) components.Engine {
+func createEngine(config *Config, resultChannel chan RequestResult) Engine {
 	request := createNewRequest(config, resultChannel)
-	requestMaker := components.NewOnePerSecondRequestMakerFactory(request)
-	return components.NewRequestEngine(requestMaker)
+	requestMaker := NewOnePerSecondRequestMakerFactory(request)
+	return NewRequestEngine(requestMaker)
 }
 
-func createNewRequest(config *components.Config, resultChannel chan components.RequestResult) components.Request {
-	return components.NewAnnonymousFunctionHttpRequest(func() (*http.Response, error) {
+func createNewRequest(config *Config, resultChannel chan RequestResult) Request {
+	return NewAnnonymousFunctionHttpRequest(func() (*http.Response, error) {
 		return http.Get(config.URL)
 	}, resultChannel)
 }
 
-func NewStairCaseMonitor(config *components.Config) *StairCaseMonitor {
+func NewStairCaseMonitor(config *Config) *StairCaseMonitor {
 	stairCaseMonitor := &StairCaseMonitor{
 		config: config,
 	}
 	stairCaseMonitor.currentRate = defaultRate
-	resultChannel := make(chan components.RequestResult)
+	resultChannel := make(chan RequestResult)
 	stairCaseMonitor.engine = createEngine(stairCaseMonitor.config, resultChannel)
-	stairCaseMonitor.aggregator = components.NewGoMetricBasedAggregator(config)
+	stairCaseMonitor.aggregator = NewGoMetricBasedAggregator(config)
 	stairCaseMonitor.aggregator.ListenAndAggregate(resultChannel)
 	return stairCaseMonitor
 }

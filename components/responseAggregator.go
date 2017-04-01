@@ -31,7 +31,7 @@ type GoMetricBasedAggregator struct {
 	CompletedRequests     metrics.Counter
 }
 
-func NewGoMetricBasedAggregator(config *Config) ResponseAggregator {
+func NewGoMetricBasedAggregator(config *Config) *GoMetricBasedAggregator {
 	aggregator := GoMetricBasedAggregator{config: config}
 	aggregator.ResponseTimeHistogram = getResponseTimeMetricsHistogram(config)
 	aggregator.ErrorCodesCounter = getAndRegisterCounter(errorCodeKey)

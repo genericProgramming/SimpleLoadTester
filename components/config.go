@@ -12,7 +12,7 @@ const DefaultFileName = "TestConfig.yaml"
 
 type Config struct {
 	Window                           time.Duration
-	NumberOfBadRequestsPerTimeWindow int `yaml:"numerOfBadRequestsPerTimeWindow"`
+	NumberOfBadRequestsPerTimeWindow int64 `yaml:"numerOfBadRequestsPerTimeWindow"`
 	Threshold                        ResponseThreshold
 	URL                              string
 }

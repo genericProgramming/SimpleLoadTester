@@ -8,7 +8,7 @@ import (
 )
 
 func TestAggregateResults(t *testing.T) {
-	Convey("Aggregating Results should always update the elapse time on the histogram", t, func() {
+	Convey("Aggregating Results should always update the elapsed time on the histogram", t, func() {
 		So(1, should.Equal, 2)
 	})
 
