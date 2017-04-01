@@ -2,7 +2,6 @@ package components
 
 import (
 	"context"
-	"log"
 	"net/http"
 	"time"
 )
@@ -55,7 +54,7 @@ type HttpRequest struct {
 	config        RequestConfig
 }
 
-func (h *HttpRequest) RunRequest(ctx context.Context) {
+func (h HttpRequest) RunRequest(ctx context.Context) {
 	start := time.Now()
 	response, e := h.config.MakeHttpCall()
 	elapsed := time.Now()
@@ -72,5 +71,4 @@ func (h *HttpRequest) RunRequest(ctx context.Context) {
 		result.ResponseStatus = response.StatusCode
 	}
 	h.outputChannel <- result
-	log.Println("Request complete with body")
 }

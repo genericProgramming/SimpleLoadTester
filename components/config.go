@@ -14,6 +14,7 @@ type Config struct {
 	Window                           time.Duration
 	NumberOfBadRequestsPerTimeWindow int `yaml:"numerOfBadRequestsPerTimeWindow"`
 	Threshold                        ResponseThreshold
+	URL                              string
 }
 
 type ResponseThreshold struct {

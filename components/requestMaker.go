@@ -24,7 +24,6 @@ type RequestMakerFactory interface {
 	NewRequestMaker() (RequestMaker, error)
 }
 
-// TODO create a NewOnePerSecondRequestMaker method for this
 type OnePerSecondRequestMakerFactory struct {
 	request Request
 }
@@ -33,10 +32,16 @@ func (factory *OnePerSecondRequestMakerFactory) NewRequestMaker() (RequestMaker,
 	if factory == nil || factory.request == nil {
 		log.Panicln("Need to have a valid request struct")
 	}
-	return NewOnePerSecondRequestMaker(factory.request), nil
+	return newOnePerSecondRequestMaker(factory.request), nil
 }
 
-func NewOnePerSecondRequestMaker(request Request) *OnePerSecondRequestMaker {
+func NewOnePerSecondRequestMakerFactory(request Request) *OnePerSecondRequestMakerFactory {
+	return &OnePerSecondRequestMakerFactory{
+		request: request,
+	}
+}
+
+func newOnePerSecondRequestMaker(request Request) *OnePerSecondRequestMaker {
 	requestMaker := OnePerSecondRequestMaker{}
 	requestMaker.request = request
 	ctx, cancel := context.WithCancel(context.Background())

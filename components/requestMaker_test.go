@@ -31,7 +31,7 @@ func TestLongRequests(t *testing.T) {
 			},
 		}
 
-		stopper := NewOnePerSecondRequestMaker(request)
+		stopper := newOnePerSecondRequestMaker(request)
 		stopper.Start()
 
 		stopCounter := 0

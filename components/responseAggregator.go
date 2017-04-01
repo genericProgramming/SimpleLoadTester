@@ -26,20 +26,20 @@ type ResponseAggregator interface {
 
 type GoMetricBasedAggregator struct {
 	config                *Config
-	responseTimeHistogram metrics.Histogram
-	errorCodesCounter     metrics.Counter
-	completedRequests     metrics.Counter
+	ResponseTimeHistogram metrics.Histogram
+	ErrorCodesCounter     metrics.Counter
+	CompletedRequests     metrics.Counter
 }
 
 func NewGoMetricBasedAggregator(config *Config) ResponseAggregator {
 	aggregator := GoMetricBasedAggregator{config: config}
-	aggregator.responseTimeHistogram = getResponseTimMetricsHistogram(config)
-	aggregator.errorCodesCounter = getAndRegisterCounter(errorCodeKey)
-	aggregator.completedRequests = getAndRegisterCounter(completedRequestsKey)
+	aggregator.ResponseTimeHistogram = getResponseTimeMetricsHistogram(config)
+	aggregator.ErrorCodesCounter = getAndRegisterCounter(errorCodeKey)
+	aggregator.CompletedRequests = getAndRegisterCounter(completedRequestsKey)
 	return &aggregator
 }
 
-func getResponseTimMetricsHistogram(config *Config) metrics.Histogram {
+func getResponseTimeMetricsHistogram(config *Config) metrics.Histogram {
 	s := metrics.NewExpDecaySample(sampleSize, sampleAlpha) // or metrics.NewUniformSample(1028)
 	h := metrics.NewHistogram(s)
 	metrics.Register(responseTimeKey, h)
@@ -62,12 +62,12 @@ func (aggregator *GoMetricBasedAggregator) ListenAndAggregate(results <-chan Req
 func (aggregator *GoMetricBasedAggregator) aggregateResults(results <-chan RequestResult) {
 	for result := range results {
 		timeTaken := result.EndTime.Sub(result.StartTime) * time.Millisecond
-		aggregator.responseTimeHistogram.Update(int64(timeTaken))
+		aggregator.ResponseTimeHistogram.Update(int64(timeTaken.Seconds() / 1000))
 
 		if !requestWasSuccessful(&result) {
-			aggregator.errorCodesCounter.Inc(1)
+			aggregator.ErrorCodesCounter.Inc(1)
 		}
-		aggregator.completedRequests.Inc(1)
+		aggregator.CompletedRequests.Inc(1)
 	}
 }
 
