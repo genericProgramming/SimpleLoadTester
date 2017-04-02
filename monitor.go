@@ -15,6 +15,10 @@ const (
 	defaultRate = Rate(20)
 )
 
+var client = http.Client{
+	Timeout: 1 * time.Second,
+}
+
 type StairCaseMonitor struct {
 	config      *Config
 	engine      Engine
@@ -90,7 +94,9 @@ func createEngine(config *Config, resultChannel chan RequestResult) Engine {
 
 func createNewRequest(config *Config, resultChannel chan RequestResult) Request {
 	return NewAnnonymousFunctionHttpRequest(func() (*http.Response, error) {
-		return http.Get(config.RequestConfiguration.URL)
+		httpRequest, err := http.NewRequest(config.RequestConfiguration.Method,
+			config.RequestConfiguration.URL, config.RequestConfiguration.Body)
+		return client.Do(httpRequest)
 	}, resultChannel)
 }
 
